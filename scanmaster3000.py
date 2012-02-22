@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 #     Doug S. Szumski  <d.s.szumski@gmail.com>  01-08-2011
+#     Richard
 #     Processing and analysis script for quad channel STM module
 # 
 #     This program is free software; you can redistribute it and/or modify
