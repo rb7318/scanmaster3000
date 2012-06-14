@@ -148,6 +148,7 @@ def contourPlot():
 
     # Generate list of all distances. This list will be the same length as the current list and therefore
     # the indices will be directly related.
+    bias = controller.bias.get()
     s_list = []
     for s_dat in data.s_dat_all_ls:
         for value in s_dat:
@@ -161,10 +162,10 @@ def contourPlot():
             #FIXME: abs shouldn't be used here because of data inversion. The offset
             #should avoid problems if big enough, and abs should only invert wild points
             if value > 0.0:
-                i_list.append(np.log10(value+offset))
+                i_list.append(np.log10(0.0001*(value+offset))/(7.7480917*bias))
             else:   
             #FIXME Shift negative data 'under the bed' for now
-                i_list.append(np.log10(0.00001+offset))
+                i_list.append(np.log10(0.0001*(0.00001+offset))/(7.7480917*bias))
                 
             #i_list.append(np.log10(abs(value+offset)))
             #i_list.append(value) #uncomment for linear plot
@@ -187,10 +188,10 @@ def contourPlot():
     cb = plt.colorbar(ticks=[0.01, 0.1, 0.5])
     cb.set_ticklabels([0.01,0.1,0.5])
 
-    cb.set_label('log_10[counts] (normalised)')
-    plt.title('I(s) scan 2D histogram')
-    plt.xlabel('Distance (nm)')
-    plt.ylabel('log_10[current (nA)]')
+    cb.set_label(r'$log_{10}(counts) (normalised)$')
+    plt.title(r'$I(s) scan 2D histogram$')
+    plt.xlabel(r'$Distance (nm)$')
+    plt.ylabel(r'$log_{10}(G/G_{0})$')
     plt.show()
 
 
@@ -202,6 +203,7 @@ def correlationHist():
     #Histogram settings from GUI
     numBins = controller.corrbins.get()
     logscale = controller.corrlogscale.get()
+    bias = controller.bias.get()
     if logscale: 
         print "Plotting 2D correlation histogram with log scale"
         histLowerLim = controller.corrcurrentmin.get()
@@ -286,15 +288,15 @@ def correlationHist():
     extent = [histLowerLim,histUpperLim,histLowerLim,histUpperLim] 
     cax = corrPlot.imshow(corrMatrix, origin='lower', extent=extent, cmap=acsnano, vmax = 1.0, vmin = -1.0, interpolation='nearest')
     cb = plt.colorbar(cax, shrink=0.75)
-    cb.set_label(r'$H_{i,j}^{corr}$', fontsize=15)
+    cb.set_label(r'$H_{i,j}^{corr}$', fontsize=18)
     corrPlot.contour(corrMatrix, origin='lower', extent=extent, cmap=black, vmax = 1.0, vmin = -1.0)
     corrPlot.set_aspect(1.)
     if logscale:
-        corrPlot.set_xlabel(r'$Log_{10}[I(nA)]$', fontsize =15)
-        corrPlot.set_ylabel(r'$Log_{10}[I(nA)]$', fontsize =15)
+        corrPlot.set_xlabel(r'$log_{10}(G/G_{0}$)', fontsize =18)
+        corrPlot.set_ylabel(r'$log_{10}(G/G_{0}$)', fontsize =18)
     else:
-        corrPlot.set_xlabel(r'$I(nA)$', fontsize =15)
-        corrPlot.set_ylabel(r'$I(nA)$', fontsize =15)
+        corrPlot.set_xlabel(r'$G/G_{0}$', fontsize =18)
+        corrPlot.set_ylabel(r'$G/G_{0}$', fontsize =18)
     corrPlot.grid(True, color='w', linestyle='-', which='major', linewidth=1)
 
     #Setup plot for histograms on the side
@@ -308,12 +310,12 @@ def correlationHist():
     for i in range(len(data.i_dat_all_combined)):
         for value in data.i_dat_all_combined[i]:
             if logscale:
-                value = np.log10(value)
+                value = np.log10(0.0001*value/(7.7480917*bias))
                 if (value > histLowerLim and value < histUpperLim):
                     i_list.append(value)
             else:
                 if (value > histLowerLim and value < histUpperLim):
-                    i_list.append(value)
+                    i_list.append(0.0001*value/(7.7480917*bias))
     axHisty.hist(i_list, bins = numBins, orientation='horizontal', normed = 1)
     #Plot the histogram on the top
     axHistx = divider.append_axes('top', 1.5, pad=0.1 , sharex=corrPlot)
@@ -1083,7 +1085,8 @@ class egraph:
         except ValueError:
             #Clear the exisiting plot
             self.g_ax.cla() 
-                    
+        
+        bias = controller.bias.get()
         # Fetch KDE parameters from control widgets
         kde_bandwidth = controller.kde_bandwidth.get()
         kde_start = controller.kde_bandwidth  # The lowest the KDE start can go
@@ -1112,7 +1115,7 @@ class egraph:
             for reading in data.i_dat_all_combined:
                 for value in reading:
                     if value > 0:
-                        i_list.append(np.log10(value))
+                        i_list.append(np.log10(0.0001*value/(7.7480917*bias)))
        
         print 'Lists appended, found:', len(i_list), 'data points.'
 
@@ -1125,8 +1128,8 @@ class egraph:
         self.z = statistics.pdf(i_list, self.x, h=kde_bandwidth, kernel='E')
         
         #Plot KDE and histogram
-        self.g_ax.set_xlabel('Log [Current (nA)]')
-        self.g_ax.set_ylabel('Counts')
+        self.g_ax.set_xlabel(r'$log_{10}(G/G_{0}$)')
+        self.g_ax.set_ylabel(r'$Density$')
 
         #Set the title
         try:
@@ -1137,13 +1140,13 @@ class egraph:
 
         #Plot the graph
         self.g_ax.plot(self.x, self.z,'b', label='KDE', linewidth=3)
-        self.g_ax.text(self.g_xmin, self.g_ymax*0.95, ' ' + str(len(data.i_dat_all_combined)) + ' scans', {'color' : 'k', 'fontsize' : 16})
+        self.g_ax.text(self.g_xmin, self.g_ymax*0.95, ' ' + str(len(data.i_dat_all_combined)) + ' scans', {'color' : 'k', 'fontsize' : 18})
         self.g_ax.legend()
         self.g_ax.grid()
         self.canvas.show()
 
     def plotGaussian(self):
-        
+      
         #Fetch the Gaussian parameters
         mu1 = controller.gF_mu1.get()
         sigma1 = controller.gF_sigma1.get() 
@@ -1191,8 +1194,8 @@ class egraph:
         self.g_ax.text(self.g_xmin, self.g_ymax*0.55, r' $\sigma_{4} = $' + str(sigma4), {'color' : 'k', 'fontsize' : 16})
         #TODO: A lot of replication between here and confScanplot 
         #Plot KDE and histogram
-        self.g_ax.set_xlabel('Log [Current (nA)]')
-        self.g_ax.set_ylabel('Counts')
+        self.g_ax.set_xlabel(r'$log_{10}(G/G_{0}$)')
+        self.g_ax.set_ylabel(r'$Density$')
         self.g_ax.set_title(self.g_title)
         self.g_ax.set_xlim([self.g_xmin, self.g_xmax])
         self.g_ax.set_ylim([self.g_ymin, self.g_ymax])
@@ -1228,7 +1231,7 @@ class egraph:
         ylim = float(controller.yfac.get())
         #Constant offset to add to each current value to shift the scan from negative region
         offset = float(controller.offset.get())
-        
+        bias = controller.bias.get()       
         self.ax.cla()  # Clear current axes
 
 
@@ -1239,15 +1242,15 @@ class egraph:
         i10_dat_hs_G0=[]
         plat_data_G0=[]
         for data in i_dat_ls:
-            i_dat_ls_G0.append(0.001*data/7.7480917)
+            i_dat_ls_G0.append(0.0001*data/(7.7480917*bias))
         for data in i10_dat_ls:
-            i10_dat_ls_G0.append(0.001*data/7.7480917)
+            i10_dat_ls_G0.append(0.0001*data/(7.7480917*bias))
         for data in i_dat_hs:
-            i_dat_hs_G0.append(0.001*data/7.7480917)
+            i_dat_hs_G0.append(0.0001*data/(7.7480917*bias))
         for data in i10_dat_hs:
-            i10_dat_hs_G0.append(0.001*data/7.7480917)
+            i10_dat_hs_G0.append(0.0001*data/(7.7480917*bias))
         for data in plat_data:
-            plat_data_G0.append(0.001*data/7.7480917) 
+            plat_data_G0.append(0.0001*data/(7.7480917*bias)) 
 
  # PLOT 1
 
@@ -1259,8 +1262,8 @@ class egraph:
         self.ax.grid(True)
         self.ax.set_xlim([0, xlim])
         self.ax.set_ylim([-4, 2])
-        self.ax.set_xlabel('Distance (nm)')
-        self.ax.set_ylabel('Current (nA)')
+        self.ax.set_xlabel(r'$Distance (nm)$')
+        self.ax.set_ylabel(r'$G/G_{0}$')
         self.ax.legend()
 
         # PLOT 2
@@ -1270,7 +1273,7 @@ class egraph:
         i_dat_shifted = []
         for value in i_dat_combined:
             shifted_val = value + offset
-            i_dat_shifted.append(0.001*shifted_val/7.7480917)
+            i_dat_shifted.append(0.0001*shifted_val/(7.7480917*bias))
         self.ax2.plot(s_dat_ls, i_dat_shifted, 'k.',
                       label='Combined data')#, shift (nA):' + str(offset))
         if controller.autocheck_linfit.get():
@@ -1343,6 +1346,7 @@ class controller:
         self.autocheck_pltfit = IntVar()
         self.auto_read = IntVar()
         self.clear_global_data = IntVar()
+        self.bias = DoubleVar()
 
         # Current Density plots
         self.xmin_cd = DoubleVar()
@@ -1462,6 +1466,7 @@ class controller:
             self.check_dat2.set(0)
             self.auto_read.set(0)
             self.clear_global_data.set(1)
+            self.bias.set(0.1)
 
             # Data filtering defaults:
             self.datfillogi.set(-1000)
@@ -1565,7 +1570,8 @@ class controller:
                 self.check_dat.set(data[ 'check_dat'])  
                 self.check_dat2.set(data[ 'check_dat2'])  
                 self.auto_read.set(data[ 'auto_read'])  
-                self.clear_global_data.set(data[ 'clear_global_data'])  
+                self.clear_global_data.set(data[ 'clear_global_data']) 
+                self.bias.set(data[ 'bias']) 
                 self.datfillogi.set(data[ 'datfillogi'])  
                 self.xmin_cd.set(data[ 'xmin_cd'])  
                 self.xmax_cd.set(data[ 'xmax_cd'])  
@@ -1794,6 +1800,7 @@ class controller:
                 'check_dat2' : self.check_dat2.get(),
                 'auto_read' : self.auto_read.get(),
                 'clear_global_data' : self.clear_global_data.get(),
+                'bias' : self.bias.get(),
                 'datfillogi' : self.datfillogi.get(),
                 'xmin_cd' : self.xmin_cd.get(),
                 'xmax_cd' : self.xmax_cd.get(),
@@ -2403,6 +2410,20 @@ class controller:
             textvariable=self.yfac,
             )
         self.yfactor.grid(row=6, column=1)
+
+        Label(self.data_frame, text='Tip sample bias (V):'
+              ).grid(row=7, column=0, sticky=W)
+        self.Bias = Spinbox(
+            self.data_frame,
+            from_=0.1,
+            to=50000.0,
+            increment=0.01,
+            width=10,
+            wrap=True,
+            validate='all',
+            textvariable=self.bias,
+            )
+        self.Bias.grid(row=7, column=1)
 
     def adc_params(self):
 
@@ -3072,6 +3093,7 @@ class controller:
         kde_points = self.kde_points.get()
         partial_hist = self.partial_hist.get()
         partial_hist_no = self.partial_hist_no.get()
+        bias = self.bias.get()
 
         #plot KDES as a function of scan number      
         if partial_hist:
@@ -3086,7 +3108,7 @@ class controller:
                 for List in scanList:
                     for value in List:
                         if value > 0:
-                            i_list.append(np.log10(0.001*value/7.7480917))
+                            i_list.append(np.log10(0.0001*value/(7.7480917*bias)))
                 List = [i_list,j]               
                 list_i_list.append(List)       
             print 'Lists appended' 
@@ -3108,7 +3130,7 @@ class controller:
                     #as opposed to takings the abs. value to avoid creating a false peak!
                     #This has the effect of vastly reducing the background peak!
                     if value > 0:
-                        i_list.append(np.log10(0.001*value/7.7480917))
+                        i_list.append(np.log10(0.0001*value/(7.7480917*bias)))
             print 'Lists appended, found:', len(i_list), 'data points.'     
             #Fit KDE and setup plot
             #FIXME: Scrap the optimal bandwidth for now.. does it make sense on log scale?
@@ -3140,17 +3162,17 @@ class controller:
                 plt.annotate(str(HC)[0:5], (HC, max(zSS)*1.2),
                     xytext=(0.5, 0.5), textcoords='axes fraction',
                     arrowprops=dict(facecolor='blue', shrink=0.05),
-                    fontsize=14,
+                    fontsize=18,
                     horizontalalignment='right', verticalalignment='top')
             title = data.filename[0:string.rfind(data.filename, '/')]
-            plt.title(title, fontsize=16)       
+            plt.title(title, fontsize=18)       
 
         #Setup plot
         plt.axis([xmin, xmax, ymin, ymax])
-        plt.legend()
+        plt.legend(bbox_to_anchor=(1.05, 1),loc=2,borderaxespad=0.)
         plt.grid()
-        plt.ylabel('Density', fontsize=14)
-        plt.xlabel('log_10[current (nanoamps)]', fontsize=14)       
+        plt.ylabel(r'$Density$', fontsize=18)
+        plt.xlabel(r'$log_{10}(G/G_{0}$)', fontsize=18)       
 
         if savefig:
             plt.savefig(title+".pdf", format='pdf')
@@ -3162,12 +3184,13 @@ class controller:
 
         # Fetch KDE parameters from control widgets
         i_list = []
+        bias = self.bias.get()
         for reading in data.i_dat_all_combined:
             for value in reading:
                 # i_list.append(np.log10(float(value)))
                 # i_list.append(value)
                 if ( (value > 0) ): #and (value < 0.5) ):
-                    i_list.append(0.001*value/7.7480917)
+                    i_list.append(0.0001*value/(7.7480917*bias))
         
         if (len(i_list) < 1):
             self.error = showerror('Error', 'No data in memory')
@@ -3176,8 +3199,8 @@ class controller:
         print 'Lists appended, found:', len(i_list), 'data points.'
         plt.hist(i_list, bins=2000, facecolor='black', normed=1)
         plt.grid()
-        plt.ylabel('Density', fontsize=14)
-        plt.xlabel('current (nanoamps)', fontsize=14)
+        plt.ylabel(r'$Density$', fontsize=18)
+        plt.xlabel(r'$G/G_{0}$', fontsize=18)
         plt.axis([0, 7,0,0.15])
         plt.show()
 
